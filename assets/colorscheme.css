@@ -1,0 +1,28 @@
+:root {
+  /* green */
+  --bg: #081C15;
+
+  --header-input-bg: #1B4332;
+  --header-input-text: #B7E4C7;
+  --header-separator-fx: #40916C;
+
+  --header-cell-bg: #1B4332;
+  --header-cell-text: #D8F3DC;
+  --cell-bg: white;
+  --cell-text: black;
+  --cell-border-unselected: #2D6A4F;
+  --cell-border-selected: #52B788;
+
+  /* violet */
+  /* --bg: #10002B;
+
+  --header-input-bg: #40916C;
+  --header-input-text: #D8F3DC;
+
+  --header-cell-bg: #240046;
+  --header-cell-text: #E0AAFF;
+  --cell-bg: white;
+  --cell-text: black;
+  --cell-border-unselected: #3C096C;
+  --cell-border-selected: #C77DFF; */
+}

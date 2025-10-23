@@ -1,0 +1,96 @@
+.scroll-container {
+  background-color: var(--bg);
+  width: 100vw;
+  height: calc(100vh - 130px);
+  overflow: auto;
+  overscroll-behavior: none;
+}
+
+.scroll-container:focus {
+  outline: none;
+}
+
+.grid {
+  display: grid;
+  width: fit-content;
+  height: fit-content;
+}
+
+
+.corner-cell {
+  background-color: var(--bg);
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 2;
+}
+
+.header-cell {
+  background-color: var(--header-cell-bg);
+  color: var(--header-cell-text);
+  border: 1px solid var(--cell-border-unselected);
+  border-right: 1px solid var(--header-cell-bg);
+  border-bottom: 1px solid var(--header-cell-bg);
+  box-sizing: border-box;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.column-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.row-header {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.cell {
+  background-color: var(--cell-bg);
+  color: var(--cell-text);
+  border: 1px solid var(--cell-border-unselected);
+  border-right: 1px solid var(--cell-bg);
+  border-bottom: 1px solid var(--cell-bg);
+  box-sizing: border-box;
+  padding: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  user-select: none;
+}
+
+.cell-selected {
+  border: 3px solid var(--cell-border-selected);
+  border-right: 2px solid var(--cell-border-selected);
+  border-bottom: 2px solid var(--cell-border-selected);
+  padding: 2px;
+  padding-right: 3px;
+  padding-bottom: 3px;
+}
+
+.cell-selected-up {
+  border-top: 1px solid var(--cell-border-selected);
+}
+
+.cell-selected-left {
+  border-left: 1px solid var(--cell-border-selected);
+}
+
+.input-cell {
+  background-color: var(--cell-bg);
+  color: var(--cell-text);
+  border: 3px solid var(--cell-border-selected);
+  border-right: 2px solid var(--cell-border-selected);
+  border-bottom: 2px solid var(--cell-border-selected);
+  padding: 2px;
+  padding-right: 3px;
+  padding-bottom: 3px;
+  outline: 0;
+}
