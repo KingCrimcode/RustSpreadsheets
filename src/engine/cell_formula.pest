@@ -1,0 +1,18 @@
+WHITESPACE = _{ " " }
+
+formula           = _{ SOI ~ "=" ~ expr ~ EOI }
+  expr            =  { atom ~ ( operator ~ atom )* }
+    atom          = _{ prefix? ~ primary | "(" ~ expr ~ ")" }
+      prefix      = _{ neg }
+        neg       =  { "-" }
+      primary     = _{ number | cell_ref }
+        number    = @{ ASCII_DIGIT+ ~ ( "." ~ ASCII_DIGIT+ )? }
+        cell_ref  = @{ col_ref ~ row_ref }
+          col_ref = _{ ASCII_ALPHA+ }
+          row_ref = _{ ASCII_DIGIT+ }
+    operator      = _{ add | sub | mul | div | pow }
+      add         =  { "+" }
+      sub         =  { "-" }
+      mul         =  { "*" }
+      div         =  { "/" }
+      pow         =  { "^" }

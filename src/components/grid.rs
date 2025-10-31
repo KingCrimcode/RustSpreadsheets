@@ -1,6 +1,9 @@
 use std::{collections::HashMap, rc::Rc};
 
 use dioxus::{document::Stylesheet, prelude::*};
+use tracing::info;
+
+use crate::engine::parser;
 
 const HEADER_ROW_HEIGHT: i32 = 25;
 const HEADER_COLUMN_WIDTH: i32 = 90;
@@ -17,8 +20,44 @@ fn column_index_to_letter(column: i32) -> String {
     result
 }
 
+fn column_letter_to_index(column: &str) -> i64 {
+    let mut result = 0;
+    for c in column.chars().map(|c| c.to_ascii_uppercase()) {
+        result = result * 26 + (c as i64 - 'A' as i64 + 1);
+    }
+    result
+}
+
+fn cell_address_to_coords(address: &str) -> Option<Coords> {
+    let col_end = address.find(|c: char| c.is_numeric())?;
+    let col = column_letter_to_index(&address[..col_end]);
+    let row = &address[col_end..].parse::<i64>().ok()?;
+    Some(Coords {
+        row: row - 1,
+        column: col - 1,
+    })
+}
+
+fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
+    let mut grid_write = grid.write();
+    let Some(content) = grid_write.cells_map.get(&coords).map(|c| c.content.clone()) else {
+        return;
+    };
+    if content.starts_with('=') {
+        let cell_ref_resolver = |ref_str: &str| grid_write.get_cell_value_by_address(ref_str);
+        let display_value = match parser::calculate(&content, &cell_ref_resolver) {
+            Ok(val) => val.to_string(),
+            Err(e) => e.to_string(),
+        };
+        grid_write.cells_map.get_mut(&coords).unwrap().display_value = display_value;
+    }
+}
+
 #[component]
-pub fn GridDisplay(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>>>) -> Element {
+pub fn GridDisplay(
+    grid: Signal<Grid>,
+    scroll_container: Signal<Option<Rc<MountedData>>>,
+) -> Element {
     rsx! {
         Stylesheet { href: asset!("/assets/grid.css") }
         div {
@@ -202,12 +241,14 @@ fn InputCell(
             },
             onblur: move |_| {
                 grid.write().is_editing_cell = false;
+                update_cell_display(grid, coords);
             },
             onkeydown: move |evt| {
                 evt.stop_propagation();
                 match evt.key() {
                     Key::Enter => {
                         grid.write().is_editing_cell = false;
+                        update_cell_display(grid, coords);
 
                         if let Some(container) = scroll_container() {
                             spawn_forever(async move {
@@ -255,10 +296,25 @@ impl Grid {
         }
     }
     pub fn get_current_cell_address(&self) -> String {
-        format!("{}{}", column_index_to_letter(self.current_cell.column as i32), self.current_cell.row + 1)
+        format!(
+            "{}{}",
+            column_index_to_letter(self.current_cell.column as i32),
+            self.current_cell.row + 1
+        )
     }
     pub fn get_current_cell_content(&self) -> String {
-        self.cells_map.get(&self.current_cell).map(|c| c.content.clone()).unwrap_or_default()
+        self.cells_map
+            .get(&self.current_cell)
+            .map(|c| c.content.clone())
+            .unwrap_or_default()
+    }
+    pub fn get_cell_value_by_address(&self, address: &str) -> Option<f64> {
+        info!("Looking for {address}");
+        let coords = cell_address_to_coords(address)?;
+        info!("Mapped to coords: {coords:?}");
+        self.cells_map
+            .get(&coords)
+            .and_then(|c| {info!("With content: {0} - display_value: {1}", c.content, c.display_value); c.display_value.parse().ok()})
     }
 }
 
@@ -276,7 +332,7 @@ impl Cell {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Clone, Copy)]
+#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
 pub struct Coords {
     row: i64,
     column: i64,

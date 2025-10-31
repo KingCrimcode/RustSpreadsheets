@@ -7,6 +7,7 @@ use crate::components::{
 };
 
 mod components;
+mod engine;
 
 fn main() {
     tracing_wasm::set_as_global_default_with_config(
