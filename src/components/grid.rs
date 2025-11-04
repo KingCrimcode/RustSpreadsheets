@@ -1,7 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
 use dioxus::{document::Stylesheet, prelude::*};
-use tracing::info;
 
 use crate::engine::parser;
 
@@ -173,14 +172,24 @@ fn GridCells(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>
         for row in 0..CELL_ROWS {
             for col in 0..CELL_COLUMNS {
                 {
-                    let grid_ref = grid.read();
+                    let grid_read = grid.read();
                     let coords = Coords { row: row as i64, column: col as i64 };
-                    let cell = grid_ref.cells_map.get(&coords);
-                    let display = cell.map(|c| c.display_value.as_str()).unwrap_or_default();
+                    let cell = grid_read.cells_map.get(&coords);
 
-                    let is_selected = grid_ref.current_cell == coords;
-                    let top_is_selected = grid_ref.current_cell == Coords { row: (row - 1) as i64, column: col as i64 };
-                    let left_is_selected = grid_ref.current_cell == Coords { row: row as i64, column: (col - 1) as i64 };
+                    let display_value = cell.map(|c| c.display_value.as_str()).unwrap_or_default();
+                    let sci_noatation = match display_value.parse::<f64>() {
+                        Ok(val) => format!("{:.2e}", val),
+                        Err(_) => display_value.to_string(),
+                    };
+                    // Number of characters that can fit in the cell
+                    // 5 - border + padding size
+                    // 7 - font size (11pt to px)
+                    // NOTE: change this after implementing changable font & border size
+                    let char_space = (grid_read.column_widths[col as usize] - 5 * 2) / 7;
+
+                    let is_selected = grid_read.current_cell == coords;
+                    let top_is_selected = grid_read.current_cell == Coords { row: (row - 1) as i64, column: col as i64 };
+                    let left_is_selected = grid_read.current_cell == Coords { row: row as i64, column: (col - 1) as i64 };
 
                     let cell_class =
                         if is_selected { "cell cell-selected" }
@@ -188,7 +197,7 @@ fn GridCells(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>
                         else if left_is_selected { "cell cell-selected-left" }
                         else { "cell" };
 
-                    let is_editing = grid_ref.is_editing_cell && is_selected;
+                    let is_editing = grid_read.is_editing_cell && is_selected;
 
                     rsx! {
                         div {
@@ -202,7 +211,13 @@ fn GridCells(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>
                                 grid.write().is_editing_cell = true;
                             },
                             if !is_editing {
-                                "{display}"
+                                if display_value.is_empty() || display_value.len() as i32 <= char_space {
+                                    "{display_value}"
+                                } else if sci_noatation.len() as i32 <= char_space {
+                                    "{sci_noatation}"
+                                } else {
+                                    "###"
+                                }
                             }
                         }
                         if is_editing {
@@ -309,12 +324,10 @@ impl Grid {
             .unwrap_or_default()
     }
     pub fn get_cell_value_by_address(&self, address: &str) -> Option<f64> {
-        info!("Looking for {address}");
         let coords = cell_address_to_coords(address)?;
-        info!("Mapped to coords: {coords:?}");
         self.cells_map
             .get(&coords)
-            .and_then(|c| {info!("With content: {0} - display_value: {1}", c.content, c.display_value); c.display_value.parse().ok()})
+            .and_then(|c| c.display_value.parse().ok())
     }
 }
 
