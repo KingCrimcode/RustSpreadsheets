@@ -20,6 +20,19 @@ impl fmt::Display for FormulaError {
     }
 }
 
+pub fn calculate(
+    input: &str,
+    cell_ref_resolver: &impl Fn(&str) -> Option<f64>,
+) -> Result<f64, FormulaError> {
+    match CellFormulaParser::parse(Rule::formula, input) {
+        Ok(mut pairs) => {
+            let expr = parse_expr(pairs.next().unwrap().into_inner());
+            eval_expr(&expr, cell_ref_resolver)
+        }
+        Err(_) => Err(FormulaError::ParsingError),
+    }
+}
+
 #[derive(Parser)]
 #[grammar = "engine/cell_formula.pest"]
 struct CellFormulaParser;
@@ -191,19 +204,6 @@ fn eval_binary_op(op: &BinOp, lhs: f64, rhs: f64) -> Result<f64, FormulaError> {
 fn eval_unary_op(op: &UnOp, operand: f64) -> f64 {
     match op {
         UnOp::Neg => -operand,
-    }
-}
-
-pub fn calculate(
-    input: &str,
-    cell_ref_resolver: &impl Fn(&str) -> Option<f64>,
-) -> Result<f64, FormulaError> {
-    match CellFormulaParser::parse(Rule::formula, input) {
-        Ok(mut pairs) => {
-            let expr = parse_expr(pairs.next().unwrap().into_inner());
-            eval_expr(&expr, cell_ref_resolver)
-        }
-        Err(_) => Err(FormulaError::ParsingError),
     }
 }
 

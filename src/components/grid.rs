@@ -1,8 +1,12 @@
 use std::rc::Rc;
 
 use dioxus::{document::Stylesheet, prelude::*};
+use tracing::info;
 
-use crate::{engine::parser, model::grid::{Cell, Coords, Grid, column_index_to_letter}};
+use crate::{
+    engine::parser,
+    model::grid::{cell_address_to_coords, column_index_to_letter, Cell, Coords, Grid},
+};
 
 pub fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
     let mut grid_write = grid.write();
@@ -10,12 +14,23 @@ pub fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
         return;
     };
     if content.starts_with('=') {
-        let cell_ref_resolver = |ref_str: &str| grid_write.get_cell_value_by_address(ref_str);
-        let display_value = match parser::calculate(&content, &cell_ref_resolver) {
-            Ok(val) => val.to_string(),
-            Err(e) => e.to_string(),
-        };
-        grid_write.cells_map.get_mut(&coords).unwrap().display_value = display_value;
+        if let Some(target_coords) = cell_address_to_coords(content.split_at(1).1) {
+            let target_value = grid_write
+                .cells_map
+                .entry(target_coords)
+                .or_insert(Cell::new())
+                .display_value
+                .clone();
+            info!("found value {}", target_value);
+            grid_write.cells_map.get_mut(&coords).unwrap().display_value = target_value;
+        } else {
+            let cell_ref_resolver = |ref_str: &str| grid_write.get_cell_value_by_address(ref_str);
+            let display_value = match parser::calculate(&content, &cell_ref_resolver) {
+                Ok(val) => val.to_string(),
+                Err(e) => e.to_string(),
+            };
+            grid_write.cells_map.get_mut(&coords).unwrap().display_value = display_value;
+        }
     } else {
         grid_write.cells_map.get_mut(&coords).unwrap().display_value = content;
     }
@@ -271,7 +286,7 @@ fn InputCell(
                     Key::Escape => {
                         evt.prevent_default();
                         let previous_content = grid.write().previous_content.clone();
-                        grid.write().cells_map.entry(coords).or_insert(Cell::new()).content = previous_content; 
+                        grid.write().cells_map.entry(coords).or_insert(Cell::new()).content = previous_content;
                         grid.write().is_editing_cell = false;
                         update_cell_display(grid, coords);
 

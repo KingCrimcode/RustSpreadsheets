@@ -18,7 +18,7 @@ fn column_letter_to_index(column: &str) -> i32 {
     result
 }
 
-fn cell_address_to_coords(address: &str) -> Option<Coords> {
+pub fn cell_address_to_coords(address: &str) -> Option<Coords> {
     let col_end = address.find(|c: char| c.is_numeric())?;
     let col = column_letter_to_index(&address[..col_end]);
     let row = &address[col_end..].parse::<i32>().ok()?;
@@ -42,7 +42,12 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn new(base_header_column_width: i32, base_header_row_height: i32, column_count: usize, row_count: usize) -> Self {
+    pub fn new(
+        base_header_column_width: i32,
+        base_header_row_height: i32,
+        column_count: usize,
+        row_count: usize,
+    ) -> Self {
         Grid {
             cells_map: HashMap::new(),
 
@@ -59,13 +64,16 @@ impl Grid {
 
     pub fn get_cell_value_by_address(&self, address: &str) -> Option<f64> {
         let coords = cell_address_to_coords(address)?;
-        self.cells_map
-            .get(&coords)
-            .and_then(|c| c.display_value.parse().ok())
+        match self.cells_map.get(&coords) {
+            Some(cell) => cell.display_value.parse().ok(),
+            None => Some(0.0),
+        }
     }
 
     pub fn get_mut_current_cell(&mut self) -> &mut Cell {
-        self.cells_map.entry(self.current_cell).or_insert(Cell::new())
+        self.cells_map
+            .entry(self.current_cell)
+            .or_insert(Cell::new())
     }
     pub fn get_current_cell_address(&self) -> String {
         format!(
