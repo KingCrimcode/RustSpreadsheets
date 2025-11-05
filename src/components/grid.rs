@@ -49,6 +49,8 @@ fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
             Err(e) => e.to_string(),
         };
         grid_write.cells_map.get_mut(&coords).unwrap().display_value = display_value;
+    } else {
+        grid_write.cells_map.get_mut(&coords).unwrap().display_value = content;
     }
 }
 
@@ -84,6 +86,23 @@ pub fn GridDisplay(
                         grid.write().current_cell.right_one();
                     }
                     Key::Enter => {
+                        if evt.modifiers().shift() {
+                            grid.write().current_cell.up_one();
+                        } else {
+                            grid.write().current_cell.down_one();
+                        }
+                    }
+                    Key::Tab => {
+                        if evt.modifiers().shift() {
+                            grid.write().current_cell.left_one();
+                        } else {
+                            grid.write().current_cell.right_one();
+                        }
+                    }
+                    Key::Character(c) => if c.len() == 1 {
+                        let previous_value = grid.write().get_current_cell_content().clone();
+                        grid.write().previous_content = previous_value;
+                        grid.write().get_mut_current_cell().content = c;
                         grid.write().is_editing_cell = true;
                     }
                     _ => {}
@@ -205,9 +224,10 @@ fn GridCells(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>
                             style: "grid-row: {row + 2}; grid-column: {col + 2};",
                             onclick: move |_| {
                                 grid.write().current_cell = Coords { row: row as i64, column: col as i64};
-                                grid.write().is_editing_cell = false;
                             },
                             ondoubleclick: move |_| {
+                                let previous_value = grid.write().get_current_cell_content().clone();
+                                grid.write().previous_content = previous_value;
                                 grid.write().is_editing_cell = true;
                             },
                             if !is_editing {
@@ -238,8 +258,6 @@ fn InputCell(
     row: i32,
     col: i32,
 ) -> Element {
-    let previous_value = use_signal(|| grid.read().get_current_cell_content().clone());
-
     rsx! {
         input {
             class: "input-cell",
@@ -252,7 +270,6 @@ fn InputCell(
                 let mut grid_write = grid.write();
                 let cell = grid_write.cells_map.entry(coords).or_insert(Cell::new());
                 cell.content = evt.value();
-                cell.display_value = evt.value();
             },
             onblur: move |_| {
                 grid.write().is_editing_cell = false;
@@ -261,9 +278,24 @@ fn InputCell(
             onkeydown: move |evt| {
                 evt.stop_propagation();
                 match evt.key() {
-                    Key::Enter => {
+                    Key::Enter | Key::Tab => {
+                        evt.prevent_default();
                         grid.write().is_editing_cell = false;
                         update_cell_display(grid, coords);
+
+                        if evt.key() == Key::Enter {
+                            if evt.modifiers().shift() {
+                                grid.write().current_cell.up_one();
+                            }
+                            else {
+                                grid.write().current_cell.down_one();
+                            }
+                        } else if evt.modifiers().shift() {
+                            grid.write().current_cell.left_one();
+                        }
+                        else {
+                            grid.write().current_cell.right_one();
+                        }
 
                         if let Some(container) = scroll_container() {
                             spawn_forever(async move {
@@ -272,12 +304,11 @@ fn InputCell(
                         }
                     }
                     Key::Escape => {
-                        let mut grid_write = grid.write();
-                        let cell = grid_write.cells_map.entry(coords).or_insert(Cell::new());
-                        cell.content = previous_value();
-                        cell.display_value = previous_value();
-
-                        grid_write.is_editing_cell = false;
+                        evt.prevent_default();
+                        let previous_content = grid.write().previous_content.clone();
+                        grid.write().cells_map.entry(coords).or_insert(Cell::new()).content = previous_content; 
+                        grid.write().is_editing_cell = false;
+                        update_cell_display(grid, coords);
 
                         if let Some(container) = scroll_container() {
                             spawn_forever(async move {
@@ -298,6 +329,7 @@ pub struct Grid {
     is_editing_cell: bool,
     column_widths: Vec<i32>,
     row_heights: Vec<i32>,
+    pub previous_content: String,
 }
 
 impl Grid {
@@ -308,7 +340,11 @@ impl Grid {
             is_editing_cell: false,
             column_widths: vec![HEADER_COLUMN_WIDTH; 1000],
             row_heights: vec![HEADER_ROW_HEIGHT; 1000],
+            previous_content: String::new(),
         }
+    }
+    pub fn get_mut_current_cell(&mut self) -> &mut Cell {
+        self.cells_map.entry(self.current_cell).or_insert(Cell::new())
     }
     pub fn get_current_cell_address(&self) -> String {
         format!(
