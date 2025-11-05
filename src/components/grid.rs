@@ -37,7 +37,7 @@ fn cell_address_to_coords(address: &str) -> Option<Coords> {
     })
 }
 
-fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
+pub fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
     let mut grid_write = grid.write();
     let Some(content) = grid_write.cells_map.get(&coords).map(|c| c.content.clone()) else {
         return;

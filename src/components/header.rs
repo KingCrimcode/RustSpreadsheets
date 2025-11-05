@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use dioxus::{document::Stylesheet, prelude::*};
 
-use crate::components::grid::{Cell, Grid};
+use crate::components::grid::{Cell, Grid, update_cell_display};
 
 #[component]
 pub fn Header(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>>>) -> Element {
@@ -51,7 +51,10 @@ fn FormulaBar(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData
 }
 
 #[component]
-fn CellAddressInput(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>>>) -> Element {
+fn CellAddressInput(
+    grid: Signal<Grid>,
+    scroll_container: Signal<Option<Rc<MountedData>>>,
+) -> Element {
     rsx! {
         input {
             class: "cell-address-input header-input",
@@ -102,6 +105,9 @@ fn FormulaInput(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedDa
                 // evt.stop_propagation();
                 match evt.key() {
                     Key::Enter => {
+                        evt.prevent_default();
+                        let coords = grid.read().current_cell;
+                        update_cell_display(grid, coords);
                         if let Some(container) = scroll_container() {
                             spawn_forever(async move {
                                 let _ = container.set_focus(true).await;
@@ -109,11 +115,11 @@ fn FormulaInput(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedDa
                         }
                     }
                     Key::Escape => {
+                        evt.prevent_default();
                         let coords = grid.read().current_cell;
-                        let mut grid_write = grid.write();
-                        let cell = grid_write.cells_map.entry(coords).or_insert(Cell::new());
-                        cell.content = previous_value();
-                        cell.display_value = previous_value();
+                        let previous_content = grid.write().previous_content.clone();
+                        grid.write().cells_map.entry(coords).or_insert(Cell::new()).content = previous_content;
+                        update_cell_display(grid, coords);
 
                         if let Some(container) = scroll_container() {
                             spawn_forever(async move {
