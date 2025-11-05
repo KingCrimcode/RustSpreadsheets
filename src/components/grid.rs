@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use dioxus::{document::Stylesheet, prelude::*};
-use tracing::info;
 
 use crate::{
     engine::parser,
@@ -21,7 +20,6 @@ pub fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
                 .or_insert(Cell::new())
                 .display_value
                 .clone();
-            info!("found value {}", target_value);
             grid_write.cells_map.get_mut(&coords).unwrap().display_value = target_value;
         } else {
             let cell_ref_resolver = |ref_str: &str| grid_write.get_cell_value_by_address(ref_str);

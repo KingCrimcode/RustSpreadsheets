@@ -2,7 +2,10 @@ use std::rc::Rc;
 
 use dioxus::{document::Stylesheet, prelude::*};
 
-use crate::{components::grid::update_cell_display, model::grid::{Cell, Grid}};
+use crate::{
+    components::grid::update_cell_display,
+    model::grid::{cell_address_to_coords, Cell, Grid},
+};
 
 #[component]
 pub fn Header(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>>>) -> Element {
@@ -55,14 +58,28 @@ fn CellAddressInput(
     grid: Signal<Grid>,
     scroll_container: Signal<Option<Rc<MountedData>>>,
 ) -> Element {
+    let mut previous_address = use_signal(|| grid.read().get_current_cell_address().clone());
+    let mut value = use_signal(String::new);
+
     rsx! {
         input {
             class: "cell-address-input header-input",
             value: "{grid.read().get_current_cell_address()}",
+            onfocus: move |_| {
+                previous_address.set(grid.read().get_current_cell_address());
+            },
+            oninput: move |evt| {
+                value.set(evt.value());
+            },
             onkeydown: move |evt| {
                 // evt.stop_propagation();
                 match evt.key() {
                     Key::Enter => {
+                        if let Some(new_coords) = cell_address_to_coords(&value.read()) {
+                            grid.write().current_cell = new_coords;
+                        } else {
+                            grid.write().current_cell = cell_address_to_coords(&previous_address.read()).unwrap();
+                        }
                         if let Some(container) = scroll_container() {
                             spawn_forever(async move {
                                 let _ = container.set_focus(true).await;
@@ -70,6 +87,7 @@ fn CellAddressInput(
                         }
                     }
                     Key::Escape => {
+                        grid.write().current_cell = cell_address_to_coords(&previous_address.read()).unwrap();
                         if let Some(container) = scroll_container() {
                             spawn_forever(async move {
                                 let _ = container.set_focus(true).await;
