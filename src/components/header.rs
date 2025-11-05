@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use dioxus::{document::Stylesheet, prelude::*};
 
-use crate::components::grid::{Cell, Grid, update_cell_display};
+use crate::{components::grid::update_cell_display, model::grid::{Cell, Grid}};
 
 #[component]
 pub fn Header(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>>>) -> Element {
