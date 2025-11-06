@@ -1,5 +1,11 @@
 use std::collections::HashMap;
 
+use petgraph::{
+    prelude::GraphMap,
+    Directed,
+    Direction::{Incoming, Outgoing},
+};
+
 pub fn column_index_to_letter(column: i32) -> String {
     let mut result = String::new();
     let mut column = column;
@@ -20,6 +26,9 @@ fn column_letter_to_index(column: &str) -> i32 {
 
 pub fn cell_address_to_coords(address: &str) -> Option<Coords> {
     let col_end = address.find(|c: char| c.is_numeric())?;
+    if col_end == 0 {
+        return None;
+    }
     let col = column_letter_to_index(&address[..col_end]);
     let row = &address[col_end..].parse::<i32>().ok()?;
     Some(Coords {
@@ -30,6 +39,7 @@ pub fn cell_address_to_coords(address: &str) -> Option<Coords> {
 
 pub struct Grid {
     pub cells_map: HashMap<Coords, Cell>,
+    pub cells_dep_graph: GraphMap<Coords, (), Directed>,
 
     pub current_cell: Coords,
     pub previous_content: String,
@@ -50,6 +60,7 @@ impl Grid {
     ) -> Self {
         Grid {
             cells_map: HashMap::new(),
+            cells_dep_graph: GraphMap::new(),
 
             current_cell: Coords { row: 0, column: 0 },
             previous_content: String::new(),
@@ -109,6 +120,23 @@ impl Grid {
             self.current_cell.column += 1;
         }
     }
+
+    pub fn remove_cell_dependencies(&mut self, coords: Coords) {
+        self.cells_dep_graph
+            .edges_directed(coords, Incoming)
+            .map(|(a, b, _)| (a, b))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .for_each(|(a, b)| {
+                self.cells_dep_graph.remove_edge(a, b);
+            });
+    }
+    pub fn get_cell_dependants(&self, coords: Coords) -> Vec<Coords> {
+        self.cells_dep_graph
+            .edges_directed(coords, Outgoing)
+            .map(|(_, b, _)| b)
+            .collect::<Vec<_>>()
+    }
 }
 
 pub struct Cell {
@@ -125,7 +153,7 @@ impl Cell {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
+#[derive(Hash, Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Coords {
     pub row: i32,
     pub column: i32,

@@ -23,11 +23,12 @@ impl fmt::Display for FormulaError {
 pub fn calculate(
     input: &str,
     cell_ref_resolver: &impl Fn(&str) -> Option<f64>,
-) -> Result<f64, FormulaError> {
+) -> Result<(f64, Vec<String>), FormulaError> {
     match CellFormulaParser::parse(Rule::formula, input) {
         Ok(mut pairs) => {
             let expr = parse_expr(pairs.next().unwrap().into_inner());
-            eval_expr(&expr, cell_ref_resolver)
+            let evaluated_expr = eval_expr(&expr, cell_ref_resolver)?;
+            Ok((evaluated_expr, eval_deps(&expr)))
         }
         Err(_) => Err(FormulaError::ParsingError),
     }
@@ -207,6 +208,18 @@ fn eval_unary_op(op: &UnOp, operand: f64) -> f64 {
     }
 }
 
+fn eval_deps(expr: &Expr) -> Vec<String> {
+    match expr {
+        Expr::Number(_) => vec![],
+        Expr::CellRef(cr) => vec![cr.to_uppercase()],
+        Expr::BinaryOp { lhs, rhs, .. } => {
+            eval_deps(lhs).into_iter().chain(eval_deps(rhs)).collect()
+        }
+        Expr::UnaryOp { operand, .. } => eval_deps(operand),
+        Expr::Function { args, .. } => args.iter().flat_map(eval_deps).collect(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::engine::parser::*;
@@ -235,35 +248,53 @@ mod tests {
 
     #[test]
     fn calculate_basic_math() {
-        assert_eq!(calculate("= 3 + 12", &mock_cell_ref_resolver), Ok(15.0));
-        assert_eq!(calculate("= 3 + -12", &mock_cell_ref_resolver), Ok(-9.0));
+        assert_eq!(
+            calculate("= 3 + 12", &mock_cell_ref_resolver),
+            Ok((15.0, vec![]))
+        );
+        assert_eq!(
+            calculate("= 3 + -12", &mock_cell_ref_resolver),
+            Ok((-9.0, vec![]))
+        );
         assert_eq!(
             calculate("= 3 + -12 / 3", &mock_cell_ref_resolver),
-            Ok(-1.0)
+            Ok((-1.0, vec![]))
         );
         assert_eq!(
             calculate("= (3 + -12) / 3", &mock_cell_ref_resolver),
-            Ok(-3.0)
+            Ok((-3.0, vec![]))
         );
         assert_eq!(
             calculate("= -a1 + B2 * 2", &mock_cell_ref_resolver),
-            Ok(3.0)
+            Ok((3.0, vec!["A1".to_string(), "B2".to_string()]))
         );
     }
 
     #[test]
     fn calculate_functions() {
-        assert_eq!(calculate("=Sum(1,2,3)", &mock_cell_ref_resolver), Ok(6.0));
-        assert_eq!(calculate("=avG(1,2,3)", &mock_cell_ref_resolver), Ok(2.0));
+        assert_eq!(
+            calculate("=Sum(1,2,3)", &mock_cell_ref_resolver),
+            Ok((6.0, vec![]))
+        );
+        assert_eq!(
+            calculate("=avG(1,2,3)", &mock_cell_ref_resolver),
+            Ok((3.0, vec![]))
+        );
         assert_eq!(
             calculate("=avG()", &mock_cell_ref_resolver),
             Err(FormulaError::DivBy0)
         );
         assert_eq!(
             calculate("=Sum(a1, b2 * 3)", &mock_cell_ref_resolver),
-            Ok(7.0)
+            Ok((7.0, vec!["A1".to_string(), "B2".to_string()]))
         );
-        assert_eq!(calculate("=avG(a1,b2,3)", &mock_cell_ref_resolver), Ok(2.0));
-        assert_eq!(calculate("=sum()", &mock_cell_ref_resolver), Ok(0.0));
+        assert_eq!(
+            calculate("=avG(a1,b2,3)", &mock_cell_ref_resolver),
+            Ok((3.0, vec!["A1".to_string(), "B2".to_string()]))
+        );
+        assert_eq!(
+            calculate("=sum()", &mock_cell_ref_resolver),
+            Ok((0.0, vec![]))
+        );
     }
 }

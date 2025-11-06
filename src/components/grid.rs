@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use dioxus::{document::Stylesheet, prelude::*};
+use tracing::info;
 
 use crate::{
     engine::parser,
@@ -8,30 +9,53 @@ use crate::{
 };
 
 pub fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
-    let mut grid_write = grid.write();
-    let Some(content) = grid_write.cells_map.get(&coords).map(|c| c.content.clone()) else {
-        return;
-    };
-    if content.starts_with('=') {
-        if let Some(target_coords) = cell_address_to_coords(content.split_at(1).1) {
-            let target_value = grid_write
-                .cells_map
-                .entry(target_coords)
-                .or_insert(Cell::new())
-                .display_value
-                .clone();
-            grid_write.cells_map.get_mut(&coords).unwrap().display_value = target_value;
+    let dependants: Vec<_>;
+    info!("Called for {:?}", coords);
+    {
+        info!("Entered brackets");
+        let mut grid_write = grid.write();
+        let Some(content) = grid_write.cells_map.get(&coords).map(|c| c.content.clone()) else {
+            return;
+        };
+        grid_write.remove_cell_dependencies(coords);
+        if content.starts_with('=') {
+            if let Some(target_coords) = cell_address_to_coords(content.split_at(1).1) {
+                info!("Entered if for one ref check");
+                let target_value = grid_write
+                    .cells_map
+                    .entry(target_coords)
+                    .or_insert(Cell::new())
+                    .display_value
+                    .clone();
+                grid_write.cells_map.get_mut(&coords).unwrap().display_value = target_value;
+                grid_write
+                    .cells_dep_graph
+                    .add_edge(target_coords, coords, ());
+            } else {
+                info!("Entered = if");
+                let cell_ref_resolver =
+                    |ref_str: &str| grid_write.get_cell_value_by_address(ref_str);
+                let display_value = match parser::calculate(&content, &cell_ref_resolver) {
+                    Ok((val, deps)) => {
+                        deps.into_iter().for_each(|dep| {
+                            if let Some(dep_coords) = cell_address_to_coords(&dep) {
+                                grid_write.cells_dep_graph.add_edge(dep_coords, coords, ());
+                            }
+                        });
+                        val.to_string()
+                    }
+                    Err(e) => e.to_string(),
+                };
+                grid_write.cells_map.get_mut(&coords).unwrap().display_value = display_value;
+            }
         } else {
-            let cell_ref_resolver = |ref_str: &str| grid_write.get_cell_value_by_address(ref_str);
-            let display_value = match parser::calculate(&content, &cell_ref_resolver) {
-                Ok(val) => val.to_string(),
-                Err(e) => e.to_string(),
-            };
-            grid_write.cells_map.get_mut(&coords).unwrap().display_value = display_value;
+            grid_write.cells_map.get_mut(&coords).unwrap().display_value = content;
         }
-    } else {
-        grid_write.cells_map.get_mut(&coords).unwrap().display_value = content;
+        dependants = grid_write.get_cell_dependants(coords);
     }
+    dependants.into_iter().for_each(|dependant| {
+        update_cell_display(grid, dependant);
+    });
 }
 
 #[component]
@@ -178,10 +202,10 @@ fn GridCells(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>
                         Ok(val) => format!("{:.2e}", val),
                         Err(_) => display_value.to_string(),
                     };
-                    // // Number of characters that can fit in the cell
-                    // // 5 - border + padding size
-                    // // 7 - font size (11pt to px)
-                    // // NOTE: change this after implementing changable font & border size
+                    // Number of characters that can fit in the cell
+                    // 5 - border + padding size
+                    // 7 - font size (idk, works)
+                    // NOTE: change this after implementing changable font & border size
                     let char_space = (grid_read.column_widths[col] - 5 * 2) / 7;
 
                     let is_selected = grid_read.current_cell == coords;
