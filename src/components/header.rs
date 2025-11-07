@@ -1,16 +1,18 @@
 use std::rc::Rc;
 
-use dioxus::{core::spawn_forever, document::Stylesheet, prelude::*};
+use dioxus::{core::spawn_forever, prelude::*};
 
 use crate::{
     components::grid::update_cell_display,
     model::grid::{cell_address_to_coords, Cell, Grid},
 };
 
+static HEADER_CSS: Asset = asset!("/assets/header.css");
+
 #[component]
 pub fn Header(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData>>>) -> Element {
     rsx! {
-        Stylesheet { href: asset!("/assets/header.css") }
+        document::Stylesheet { href: HEADER_CSS }
         div {
             class: "header",
 

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use dioxus::{core::spawn_forever, document::Stylesheet, prelude::*};
+use dioxus::{core::spawn_forever, prelude::*};
 use tracing::info;
 
 use crate::{
@@ -58,13 +58,15 @@ pub fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
     });
 }
 
+static GRID_CSS: Asset = asset!("/assets/grid.css");
+
 #[component]
 pub fn GridDisplay(
     grid: Signal<Grid>,
     scroll_container: Signal<Option<Rc<MountedData>>>,
 ) -> Element {
     rsx! {
-        Stylesheet { href: asset!("/assets/grid.css") }
+        document::Stylesheet { href: GRID_CSS }
         div {
             class: "scroll-container",
             tabindex: "0",
