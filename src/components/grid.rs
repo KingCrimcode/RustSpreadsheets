@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use dioxus::{document::Stylesheet, prelude::*};
+use dioxus::{core::spawn_forever, document::Stylesheet, prelude::*};
 use tracing::info;
 
 use crate::{
