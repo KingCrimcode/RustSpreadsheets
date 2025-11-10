@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use petgraph::{
     prelude::GraphMap,
@@ -37,6 +37,23 @@ pub fn cell_address_to_coords(address: &str) -> Option<Coords> {
     })
 }
 
+#[derive(Debug)]
+pub enum GetCellValueError {
+    InvalidAddress,
+    InvalidValue(String),
+    CircularReference,
+}
+
+impl fmt::Display for GetCellValueError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GetCellValueError::InvalidAddress => write!(f, "Invalid address"),
+            GetCellValueError::InvalidValue(value) => write!(f, "{}", value),
+            GetCellValueError::CircularReference => write!(f, "#REF!"),
+        }
+    }
+}
+
 pub struct Grid {
     pub cells_map: HashMap<Coords, Cell>,
     pub cells_dep_graph: GraphMap<Coords, (), Directed>,
@@ -73,11 +90,22 @@ impl Grid {
         }
     }
 
-    pub fn get_cell_value_by_address(&self, address: &str) -> Option<f64> {
-        let coords = cell_address_to_coords(address)?;
+    pub fn get_cell_value_by_address(&self, address: &str) -> Result<f64, GetCellValueError> {
+        let coords = cell_address_to_coords(address).ok_or(GetCellValueError::InvalidAddress)?;
         match self.cells_map.get(&coords) {
-            Some(cell) => cell.display_value.parse().ok(),
-            None => Some(0.0),
+            Some(cell) => match cell.display_value.parse() {
+                Ok(value) => Ok(value),
+                Err(_) => {
+                    if cell.content.is_empty() {
+                        return Ok(0.0);
+                    }
+                    match cell.display_value == "#REF!" {
+                        true => Err(GetCellValueError::CircularReference),
+                        false => Err(GetCellValueError::InvalidValue(cell.display_value.clone())),
+                    }
+                }
+            },
+            None => Ok(0.0),
         }
     }
 
@@ -139,6 +167,7 @@ impl Grid {
     }
 }
 
+#[derive(Debug)]
 pub struct Cell {
     pub content: String,
     pub display_value: String,

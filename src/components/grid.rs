@@ -1,14 +1,19 @@
 use std::rc::Rc;
 
 use dioxus::{core::spawn_forever, prelude::*};
+use petgraph::{
+    algo,
+    visit::{self, Dfs},
+};
 use tracing::info;
 
 use crate::{
-    engine::parser,
-    model::grid::{cell_address_to_coords, column_index_to_letter, Cell, Coords, Grid},
+    engine::parser::{self, FormulaError},
+    model::grid::{column_index_to_letter, cell_address_to_coords, Cell, Coords, Grid},
 };
 
 pub fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
+    let mut cycle: bool = false;
     let dependants: Vec<_>;
     info!("Called for {:?}", coords);
     {
@@ -18,24 +23,20 @@ pub fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
             return;
         };
         grid_write.remove_cell_dependencies(coords);
+        let display_value: String;
         if content.starts_with('=') {
             if let Some(target_coords) = cell_address_to_coords(content.split_at(1).1) {
-                info!("Entered if for one ref check");
-                let target_value = grid_write
-                    .cells_map
-                    .entry(target_coords)
-                    .or_insert(Cell::new())
-                    .display_value
-                    .clone();
-                grid_write.cells_map.get_mut(&coords).unwrap().display_value = target_value;
+                display_value = match grid_write.get_cell_value_by_address(content.split_at(1).1) {
+                    Ok(value) => value.to_string(),
+                    Err(err) => err.to_string(),
+                };
                 grid_write
                     .cells_dep_graph
                     .add_edge(target_coords, coords, ());
             } else {
-                info!("Entered = if");
                 let cell_ref_resolver =
                     |ref_str: &str| grid_write.get_cell_value_by_address(ref_str);
-                let display_value = match parser::calculate(&content, &cell_ref_resolver) {
+                display_value = match parser::calculate(&content, &cell_ref_resolver) {
                     Ok((val, deps)) => {
                         deps.into_iter().for_each(|dep| {
                             if let Some(dep_coords) = cell_address_to_coords(&dep) {
@@ -46,16 +47,53 @@ pub fn update_cell_display(mut grid: Signal<Grid>, coords: Coords) {
                     }
                     Err(e) => e.to_string(),
                 };
-                grid_write.cells_map.get_mut(&coords).unwrap().display_value = display_value;
+            }
+            if is_node_in_cycle(&grid_write.cells_dep_graph, coords) {
+                cycle = true;
             }
         } else {
-            grid_write.cells_map.get_mut(&coords).unwrap().display_value = content;
+            display_value = content;
         }
+        grid_write.cells_map.get_mut(&coords).unwrap().display_value = match cycle {
+            false => display_value,
+            true => FormulaError::CircularReference.to_string(),
+        };
         dependants = grid_write.get_cell_dependants(coords);
     }
-    dependants.into_iter().for_each(|dependant| {
-        update_cell_display(grid, dependant);
-    });
+    if !cycle {
+        dependants.into_iter().for_each(|dependant| {
+            update_cell_display(grid, dependant);
+        });
+    } else {
+        let nodes = get_connected_nodes(&grid.read().cells_dep_graph, coords);
+        nodes.iter().for_each(|node| {
+            grid.write().cells_map.get_mut(node).unwrap().display_value =
+                FormulaError::CircularReference.to_string();
+        });
+        info!("Connected nodes: {:?}", nodes);
+    }
+}
+
+fn is_node_in_cycle<G>(graph: G, node: G::NodeId) -> bool
+where
+    G: visit::IntoNeighbors + visit::Visitable,
+{
+    let mut space = algo::DfsSpace::new(&graph);
+    for neighbour in graph.neighbors(node) {
+        if algo::has_path_connecting(graph, neighbour, node, Some(&mut space)) {
+            return true;
+        }
+    }
+    false
+}
+
+fn get_connected_nodes<G>(graph: G, node: G::NodeId) -> <G as petgraph::visit::Visitable>::Map
+where
+    G: visit::IntoNeighbors + visit::Visitable,
+{
+    let mut dfs = Dfs::new(&graph, node);
+    while dfs.next(&graph).is_some() {}
+    dfs.discovered
 }
 
 static GRID_CSS: Asset = asset!("/assets/grid.css");
@@ -276,8 +314,10 @@ fn InputCell(
                 cell.content = evt.value();
             },
             onblur: move |_| {
+                if grid.write().is_editing_cell {
+                    update_cell_display(grid, coords);
+                }
                 grid.write().is_editing_cell = false;
-                update_cell_display(grid, coords);
             },
             onkeydown: move |evt| {
                 evt.stop_propagation();
