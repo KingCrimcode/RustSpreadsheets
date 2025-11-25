@@ -11,6 +11,7 @@ mod model;
 
 static MAIN_CSS: Asset = asset!("/assets/main.css");
 static COLORSCHEME: Asset = asset!("/assets/colorscheme.css");
+static FAVICON: Asset = asset!("/assets/icon.png");
 
 const HEADER_COLUMN_WIDTH: i32 = 90;
 const HEADER_ROW_HEIGHT: i32 = 25;
@@ -39,6 +40,8 @@ fn app() -> Element {
     let scroll_container = use_signal(|| None);
 
     rsx! {
+        document::Title { "Spreadsheet" }
+        document::Link { rel: "icon", href: FAVICON }
         document::Stylesheet { href: MAIN_CSS }
         document::Stylesheet { href: COLORSCHEME }
         body {
