@@ -3,6 +3,24 @@
 version = 4
 
 [[package]]
+name = "RustSpreadsheets"
+version = "0.1.0"
+dependencies = [
+ "dioxus",
+ "js-sys",
+ "lazy_static",
+ "lucide-dioxus",
+ "pest",
+ "pest_derive",
+ "petgraph",
+ "pratt",
+ "tracing",
+ "tracing-wasm",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "adler2"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4332,24 +4350,6 @@ name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
-
-[[package]]
-name = "spreadsheet_engine"
-version = "0.1.0"
-dependencies = [
- "dioxus",
- "js-sys",
- "lazy_static",
- "lucide-dioxus",
- "pest",
- "pest_derive",
- "petgraph",
- "pratt",
- "tracing",
- "tracing-wasm",
- "wasm-bindgen",
- "web-sys",
-]
 
 [[package]]
 name = "stable_deref_trait"
