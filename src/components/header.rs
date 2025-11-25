@@ -1,10 +1,11 @@
 use std::rc::Rc;
+use wasm_bindgen::JsCast;
 
 use dioxus::{core::spawn_forever, prelude::*};
 
 use crate::{
     components::grid::update_cell_display,
-    model::grid::{cell_address_to_coords, Cell, Grid},
+    model::grid::{cell_address_to_coords, Cell, Coords, Grid},
 };
 
 static HEADER_CSS: Asset = asset!("/assets/header.css");
@@ -16,7 +17,7 @@ pub fn Header(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData
         div {
             class: "header",
 
-            FileToolbar {},
+            FileToolbar { grid },
             FormattingToolbar {},
             FormulaBar { grid, scroll_container }
         }
@@ -24,10 +25,66 @@ pub fn Header(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedData
 }
 
 #[component]
-fn FileToolbar() -> Element {
+fn FileToolbar(grid: Signal<Grid>) -> Element {
     rsx! {
         div {
             class: "file-toolbar",
+
+            button {
+                "tooltip-text": "Export to CSV",
+                onclick: move |_| {
+                    let csv = export_to_csv(grid);
+
+                    let array = js_sys::Array::new();
+                    array.push(&wasm_bindgen::JsValue::from_str(&csv));
+                    let blob = web_sys::Blob::new_with_str_sequence(&array).unwrap();
+                    let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
+
+                    let document = web_sys::window().unwrap().document().unwrap();
+                    let anchor: web_sys::HtmlAnchorElement = document.create_element("a").unwrap().dyn_into().unwrap();
+
+                    anchor.set_href(&url);
+                    anchor.set_download("export.csv");
+                    anchor.click();
+
+                    web_sys::Url::revoke_object_url(&url).unwrap();
+                },
+                lucide_dioxus::Save { size: 22 }
+            }
+
+            input {
+                r#type: "file",
+                accept: ".csv",
+                id: "csv-import",
+                style: "display: none;",
+                onchange: move |evt| {
+                    spawn(async move {
+                        if let Some(file) = evt.files().first() {
+                            match file.read_string().await {
+                                Ok(csv_text) => {
+                                    import_csv(grid, &csv_text);
+                                }
+                                Err(e) => {
+                                    error!("{e:?}");
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+            button {
+                "tooltip-text": "Import CSV",
+                onclick: move |_| {
+                    if let Some(document) = web_sys::window().and_then(|w| w.document()) {
+                        if let Some(element) = document.get_element_by_id("csv-import") {
+                            if let Some(input) = element.dyn_ref::<web_sys::HtmlInputElement>() {
+                                input.click();
+                            }
+                        }
+                    }
+                },
+                lucide_dioxus::FolderOpen { size: 22 }
+            }
         }
     }
 }
@@ -152,4 +209,59 @@ fn FormulaInput(grid: Signal<Grid>, scroll_container: Signal<Option<Rc<MountedDa
             }
         }
     }
+}
+
+fn export_to_csv(grid: Signal<Grid>) -> String {
+    let row_count = grid
+        .read()
+        .cells_map
+        .keys()
+        .map(|c| c.row)
+        .max()
+        .unwrap_or(0);
+    let col_count = grid
+        .read()
+        .cells_map
+        .keys()
+        .map(|c| c.column)
+        .max()
+        .unwrap_or(0);
+
+    let mut lines = Vec::new();
+    for row in 0..=row_count {
+        let mut cells = Vec::new();
+        for col in 0..=col_count {
+            let coords = Coords { row, column: col };
+            let content = grid
+                .read()
+                .cells_map
+                .get(&coords)
+                .map(|c| c.content.clone())
+                .unwrap_or_default();
+            cells.push(content);
+        }
+        lines.push(cells.join(","));
+    }
+    lines.join("\n")
+}
+
+fn import_csv(mut grid: Signal<Grid>, csv_text: &str) {
+    let mut coords_list: Vec<Coords> = Vec::new();
+    csv_text.lines().enumerate().for_each(|(row, line)| {
+        line.split(',').enumerate().for_each(|(col, content)| {
+            let coords = Coords {
+                row: row as i32,
+                column: col as i32,
+            };
+            coords_list.push(coords);
+            grid.write()
+                .cells_map
+                .entry(coords)
+                .or_insert(Cell::new())
+                .content = content.to_string();
+        });
+    });
+    coords_list.into_iter().for_each(|coords| {
+        update_cell_display(grid, coords);
+    });
 }

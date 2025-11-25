@@ -8,13 +8,17 @@ edition = "2021"
 
 [dependencies]
 dioxus = { version = "0.7.1", features = [] }
+js-sys = "0.3.82"
 lazy_static = "1.5.0"
+lucide-dioxus = { version = "2.44.0", features = ["all-icons"] }
 pest = "2.8.3"
 pest_derive = "2.8.3"
 petgraph = "0.8.3"
 pratt = "0.4.0"
 tracing = "0.1"
 tracing-wasm = "0.2"
+wasm-bindgen = "0.2.105"
+web-sys = { version = "0.3.82", features = ["Blob", "Url", "HtmlAnchorElement", "Document", "Window", "File", "HtmlInputElement"]}
 
 [features]
 default = ["web"]

@@ -9,3 +9,43 @@ body {
   font-size: 11px;
   overflow: hidden;
 }
+
+button {
+  background-color: var(--toolbar-bg);
+  color: var(--button-text);
+  border: none;
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+button::after {
+  conent: attr(tooltip-text);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  margin-bottom: 5px;
+}
+
+button:hover::after {
+  opacity: 1;
+}

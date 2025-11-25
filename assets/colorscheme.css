@@ -2,6 +2,10 @@
   /* green */
   --bg: #081C15;
 
+  --toolbar-bg: #1B4332;
+  --button-text: #B7E4C7;
+  --button-hover-bg: #2D6A4F;
+
   --header-input-bg: #1B4332;
   --header-input-text: #B7E4C7;
   --header-separator-fx: #40916C;
