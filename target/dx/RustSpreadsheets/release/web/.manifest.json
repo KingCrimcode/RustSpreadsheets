@@ -1,0 +1,84 @@
+{
+  "cli_version": "0.7.1 (03ab7fa)",
+  "rust_version": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "assets": {
+    "assets": {
+      "/home/Alladin/Projects/RustSpreadsheets/assets/colorscheme.css": [
+        {
+          "absolute_source_path": "/home/Alladin/Projects/RustSpreadsheets/assets/colorscheme.css",
+          "bundled_path": "colorscheme-dxh2b911d6eb297aeb.css",
+          "options": {
+            "add_hash": true,
+            "variant": "Unknown"
+          }
+        }
+      ],
+      "/home/Alladin/Projects/RustSpreadsheets/assets/grid.css": [
+        {
+          "absolute_source_path": "/home/Alladin/Projects/RustSpreadsheets/assets/grid.css",
+          "bundled_path": "grid-dxhc4dd91fdfab7dfa3.css",
+          "options": {
+            "add_hash": true,
+            "variant": "Unknown"
+          }
+        }
+      ],
+      "/home/Alladin/Projects/RustSpreadsheets/assets/header.css": [
+        {
+          "absolute_source_path": "/home/Alladin/Projects/RustSpreadsheets/assets/header.css",
+          "bundled_path": "header-dxhf87759128bf55b86.css",
+          "options": {
+            "add_hash": true,
+            "variant": "Unknown"
+          }
+        }
+      ],
+      "/home/Alladin/Projects/RustSpreadsheets/assets/icon.png": [
+        {
+          "absolute_source_path": "/home/Alladin/Projects/RustSpreadsheets/assets/icon.png",
+          "bundled_path": "icon-dxhb94b1f9dbbf62a1f.png",
+          "options": {
+            "add_hash": true,
+            "variant": "Unknown"
+          }
+        }
+      ],
+      "/home/Alladin/Projects/RustSpreadsheets/assets/main.css": [
+        {
+          "absolute_source_path": "/home/Alladin/Projects/RustSpreadsheets/assets/main.css",
+          "bundled_path": "main-dxh8beddaad81e2e437.css",
+          "options": {
+            "add_hash": true,
+            "variant": "Unknown"
+          }
+        }
+      ],
+      "/home/Alladin/Projects/RustSpreadsheets/target/dx/RustSpreadsheets/release/web/public/wasm/RustSpreadsheets.js": [
+        {
+          "absolute_source_path": "/home/Alladin/Projects/RustSpreadsheets/target/dx/RustSpreadsheets/release/web/public/wasm/RustSpreadsheets.js",
+          "bundled_path": "RustSpreadsheets-dxh0b224682f5b54c5.js",
+          "options": {
+            "add_hash": true,
+            "variant": {
+              "Js": {
+                "minify": true,
+                "preload": true,
+                "static_head": false
+              }
+            }
+          }
+        }
+      ],
+      "/home/Alladin/Projects/RustSpreadsheets/target/dx/RustSpreadsheets/release/web/public/wasm/RustSpreadsheets_bg.wasm": [
+        {
+          "absolute_source_path": "/home/Alladin/Projects/RustSpreadsheets/target/dx/RustSpreadsheets/release/web/public/wasm/RustSpreadsheets_bg.wasm",
+          "bundled_path": "RustSpreadsheets_bg-dxhbaa6b0ec138876.wasm",
+          "options": {
+            "add_hash": true,
+            "variant": "Unknown"
+          }
+        }
+      ]
+    }
+  }
+}
