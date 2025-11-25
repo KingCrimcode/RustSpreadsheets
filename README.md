@@ -4,5 +4,5 @@ Spreadsheet web app written in Rust using the Dioxus framework.
 
 Live app: [spreadsheets.vimunteanu.me](https://www.spreadsheets.vimunteanu.me/)
 
-Supported functions (case insensitive): sum, avg
-Errors: Same notations as LibreOffice Calc
+Supported functions (case insensitive): sum, avg <br>
+Errors: Same notations as LibreOffice Calc <br>
